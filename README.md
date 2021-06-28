@@ -2,9 +2,9 @@
 
 ## Overview
 
-An experimental project under Bayesian neural networks given the use of Langevin gradients with parallel tempering MCMC.
+An experimental project under Bayesian neural networks using Langevin-gradients parallel tempering MCMC.
 
-The proposal here is to compare our forecasting model with state-of-art neural network  training algorithms(FNN-SGD and FNN-Adam)
+The proposal here is to compare our stock price forecasting model with state-of-art neural network  training algorithms(FNN-SGD and FNN-Adam)
 
 data.py is used for data preprocessing.
 
@@ -22,4 +22,6 @@ Following are some example results of MMM’s stock price prediction. They are T
 
  
 ## Published research studies
-xxxxxxxxxxxx
+- Chandra R ,  Jain K ,  Deo R V , et al. [Langevin-gradient parallel tempering for Bayesian neural learning](https://www.sciencedirect.com/science/article/abs/pii/S0925231219308069)[J]. Neurocomputing, 2019, 359(SEP.24):315-326.
+
+When you use Langevin-gradient parallel tempering for Bayesian neural learning, please cite the above papers.
