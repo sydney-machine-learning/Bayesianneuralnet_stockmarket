@@ -414,7 +414,7 @@ class ptReplica(multiprocessing.Process):
                 acc_train[i + 1] = 0
                 acc_test[i + 1] = 0
 
-                # print (i, langevin_count, self.adapttemp, diff_prop ,  likelihood, rmsetrain, rmsetest, acc_train[i+1,], acc_test[i+1,] , 'accepted')
+                print (i, langevin_count, num_accepted, self.adapttemp, diff_prop ,  likelihood, rmsetrain, rmsetest  , 'accepted')
 
                 pos_w[i + 1] = w_proposal
 
@@ -958,262 +958,283 @@ class ParallelTempering:
 
 
 def main():
-    for d in os.listdir('./datasets/raw'):
-        if osp.isfile(osp.join('datasets/raw', d)):
-            name = osp.splitext(d)[0]
 
-        dataset = Dataset(name, 0.8, 5, 1, 5, 2, overwrite=False)
-        traindata = np.asarray(dataset.train)
-        testdata = np.asarray(dataset.test)
-        ###############################
-        # THESE ARE THE HYPERPARAMETERS#
-        ###############################
 
-        hidden = 5
-        ip = 5
-        output = 5
+    name = 'MMM8'
 
-        NumSample = 100000  #
 
-        topology = [ip, hidden, output]
+    #for d in os.listdir('./datasets/raw'):
+    #   if osp.isfile(osp.join('datasets/raw', d)):
+    #       name = osp.splitext(d)[0]
 
-        netw = topology
+        
 
-        y_test = testdata[:, netw[0]: netw[0] + netw[-1]]
-        y_train = traindata[:, netw[0]: netw[0] + netw[-1]]
+        #dataset = Dataset(name, 0.8, 5, 1, 5, 2, overwrite=False)
 
-        maxtemp = 5
-        # swap_ratio =  0.04
-        swap_ratio = 0.01  #
-        num_chains = 10  #
-        swap_interval = int(
-            swap_ratio * NumSample / num_chains)  # int(swap_ratio * (NumSample/num_chains)) #how ofen you swap neighbours. note if swap is more than Num_samples, its off
-        burn_in = 0.5  #
+    
 
-        learn_rate = 0.1  # in case langevin gradients are used. Can select other values, we found small value is ok.
 
-        use_langevin_gradients = True  # False leaves it as Random-walk proposals. Note that Langevin gradients will take a bit more time computationally
-        if output == 1:
-            problemfolder = 'one_step_problemfolder/'
-            problemfolder_db = 'one_step_results/'  # save main results
-        else:
-            problemfolder = 'problemfolder/'
-            problemfolder_db = 'results/'
+    #traindata = np.asarray(dataset.train)
 
-        filename = ""
-        path = problemfolder + name
-        if not os.path.exists(path):
-            os.makedirs(path)
-        else:
-            shutil.rmtree(path)
-            os.makedirs(path)
 
-        path_db = problemfolder_db + name
-        if not os.path.exists(path_db):
-            os.makedirs(path_db)
-        else:
-            shutil.rmtree(path_db)
-            os.makedirs(path_db)
+    #testdata = np.asarray(dataset.test)
+
+
+    traindata = np.genfromtxt('./datasets/MMM8_train.txt', delimiter = ' ')
+    testdata = np.genfromtxt('./datasets/MMM8_test.txt', delimiter = ' ')
+
+
+
+    print(traindata.shape)
+    ###############################
+    # THESE ARE THE HYPERPARAMETERS#
+    ###############################
+
+    hidden = 5
+    ip = 5
+    output = 5
+
+    NumSample = 10000 #
+
+    topology = [ip, hidden, output]
+
+    netw = topology
+
+    y_test = testdata[:, netw[0]: netw[0] + netw[-1]]
+    y_train = traindata[:, netw[0]: netw[0] + netw[-1]]
+
+    maxtemp = 5
+    # swap_ratio =  0.04
+    swap_ratio = 0.01  #
+    num_chains = 10  #
+    swap_interval = int(
+        swap_ratio * NumSample / num_chains)  # int(swap_ratio * (NumSample/num_chains)) #how ofen you swap neighbours. note if swap is more than Num_samples, its off
+    burn_in = 0.5  #
+
+    learn_rate = 0.1  # in case langevin gradients are used. Can select other values, we found small value is ok.
+
+    use_langevin_gradients = True  # False leaves it as Random-walk proposals. Note that Langevin gradients will take a bit more time computationally
+    if output == 1:
+        problemfolder = 'one_step_problemfolder/'
+        problemfolder_db = 'one_step_results/'  # save main results
+    else:
+        problemfolder = 'problemfolder/'
+        problemfolder_db = 'results/'
+
+    filename = ""
+    path = problemfolder + name
+    if not os.path.exists(path):
+        os.makedirs(path)
+    else:
+        shutil.rmtree(path)
+        os.makedirs(path)
+
+    path_db = problemfolder_db + name
+    if not os.path.exists(path_db):
+        os.makedirs(path_db)
+    else:
+        shutil.rmtree(path_db)
+        os.makedirs(path_db)
 ##############################################################
-        timer = time.time()
+    timer = time.time()
 
-        langevin_prob = 1 / 10
+    langevin_prob = 1 / 10
 
-        pt = ParallelTempering(use_langevin_gradients, learn_rate, traindata, testdata, topology, num_chains, maxtemp,
-                               NumSample, swap_interval, langevin_prob, path)
+    pt = ParallelTempering(use_langevin_gradients, learn_rate, traindata, testdata, topology, num_chains, maxtemp,
+                            NumSample, swap_interval, langevin_prob, path)
 
-        directories = [path + '/predictions/', path + '/posterior', path + '/results', path + '/surrogate',
-                       path + '/surrogate/learnsurrogate_data', path + '/posterior/pos_w',
-                       path + '/posterior/pos_likelihood', path + '/posterior/surg_likelihood',
-                       path + '/posterior/accept_list']
+    directories = [path + '/predictions/', path + '/posterior', path + '/results', path + '/surrogate',
+                    path + '/surrogate/learnsurrogate_data', path + '/posterior/pos_w',
+                    path + '/posterior/pos_likelihood', path + '/posterior/surg_likelihood',
+                    path + '/posterior/accept_list']
 
-        for d in directories:
-            pt.make_directory(filename + d)
+    for d in directories:
+        pt.make_directory(filename + d)
 
-        pt.initialize_chains(burn_in)
+    pt.initialize_chains(burn_in)
 
-        pos_w, fx_train, fx_test, rmse_train, rmse_test, indi_rmse_train, indi_rmse_test, mae_train, mae_test, mape_train, \
-            mape_test, acc_train, acc_test, likelihood_rep, swap_perc, \
-            accept_vec, accept, fx_test_all = pt.run_chains()
+    pos_w, fx_train, fx_test, rmse_train, rmse_test, indi_rmse_train, indi_rmse_test, mae_train, mae_test, mape_train, \
+        mape_test, acc_train, acc_test, likelihood_rep, swap_perc, \
+        accept_vec, accept, fx_test_all = pt.run_chains()
 
-        list_end = accept_vec.shape[1]
-        accept_ratio = accept_vec[:, list_end - 1:list_end] / list_end
-        accept_per = np.mean(accept_ratio) * 100
+    list_end = accept_vec.shape[1]
+    accept_ratio = accept_vec[:, list_end - 1:list_end] / list_end
+    accept_per = np.mean(accept_ratio) * 100
 
-        print(accept_per, ' accept_per')
+    print(accept_per, ' accept_per')
 
-        timer2 = time.time()
+    timer2 = time.time()
 
-        timetotal = (timer2 - timer) / 60
-        print(timetotal, 'min taken')
+    timetotal = (timer2 - timer) / 60
+    print(timetotal, 'min taken')
 
-        # PLOTS
+    # PLOTS
 
-        '''acc_tr = np.mean(acc_train [:])
-        acctr_std = np.std(acc_train[:]) 
-        acctr_max = np.amax(acc_train[:])
+    '''acc_tr = np.mean(acc_train [:])
+    acctr_std = np.std(acc_train[:]) 
+    acctr_max = np.amax(acc_train[:])
 
-        acc_tes = np.mean(acc_test[:])
-        acctest_std = np.std(acc_test[:]) 
-        acctes_max = np.amax(acc_test[:])'''
+    acc_tes = np.mean(acc_test[:])
+    acctest_std = np.std(acc_test[:]) 
+    acctes_max = np.amax(acc_test[:])'''
 
-        final_metrics = []
-        for metric in [rmse_train, rmse_test, mae_train, mae_test, mape_train, mape_test]:
-            final_metrics.append(np.mean(metric))
-            final_metrics.append(np.std(metric))
-            final_metrics.append(np.amin(metric))
-            # rmse_tr = np.mean(rmse_train[:])
-            # rmsetr_std = np.std(rmse_train[:])
-            # rmsetr_max = np.amin(rmse_train[:])
-            #
-            # rmse_tes = np.mean(rmse_test[:])
-            # rmsetest_std = np.std(rmse_test[:])
-            # rmsetes_max = np.amin(rmse_test[:])
-
-        outres = open(path + '/result.txt', "a+")
-        outres_db = open(path_db + '/result.txt', "a+")
-
-        resultingfile = open(path + '/master_result_file.txt', 'a+')
-        resultingfile_db = open(path_db + '/master_result_file.txt', 'a+')
-
-        xv = name
-
-        allres = np.asarray(
-            [NumSample, maxtemp, swap_interval, langevin_prob, learn_rate, swap_perc, accept_per, timetotal] + final_metrics)
-
-        np.savetxt(outres_db, allres, fmt='%1.4f', newline=' ')
-        np.savetxt(resultingfile_db, allres, fmt='%1.4f', newline=' ')
-        np.savetxt(resultingfile_db, [xv], fmt="%s", newline=' \n')
-
-        np.savetxt(outres, allres, fmt='%1.4f', newline=' ')
-        np.savetxt(resultingfile, allres, fmt='%1.4f', newline=' ')
-        np.savetxt(resultingfile, [xv], fmt="%s", newline=' \n')
-
-        np.savetxt(path_db + '/ptmcmc_pred_test_nor.txt', fx_test, fmt='%1.6f')
-
-        n = len(y_test)
-        indi_mae=sum(np.abs(y_test- fx_test)) / n
-        indi_mape= sum(np.abs((y_test- fx_test) / (y_test + 1e-6))) / n * 100
-        indi_rmse_cal=rmse = np.sqrt(sum(np.square(y_test- fx_test)) / n)
-        np.savetxt(path_db + '/ptmcmc_indi_mae.txt', indi_mae, fmt='%1.6f')
-        np.savetxt(path_db + '/ptmcmc_indi_mape.txt', indi_mape, fmt='%1.6f')
-        np.savetxt(path_db + '/ptmcmc_indi_rmse.txt', indi_rmse_cal, fmt='%1.6f')
-
-
-        fx_test = fx_test * (dataset.max -dataset.min)+ dataset.min
-        y_test = y_test * (dataset.max -dataset.min)+ dataset.min
-        np.savetxt(path_db + '/ptmcmc_test_y.txt', y_test, fmt='%1.6f')
-        np.savetxt(path_db + '/ptmcmc_pred_test.txt', fx_test, fmt='%1.6f')
-
-        x = np.linspace(0, rmse_train.shape[0], num=rmse_train.shape[0])
-
-        # plt.plot(x, rmse_train, '.',   label='Test')
-        # plt.plot(x, rmse_test,  '.', label='Train')
-        # plt.legend(loc='upper right')
+    final_metrics = []
+    for metric in [rmse_train, rmse_test, mae_train, mae_test, mape_train, mape_test]:
+        final_metrics.append(np.mean(metric))
+        final_metrics.append(np.std(metric))
+        final_metrics.append(np.amin(metric))
+        # rmse_tr = np.mean(rmse_train[:])
+        # rmsetr_std = np.std(rmse_train[:])
+        # rmsetr_max = np.amin(rmse_train[:])
         #
-        # plt.xlabel('Samples', fontsize=12)
-        # plt.ylabel('RMSE', fontsize=12)
-        #
-        # plt.savefig(path+'/rmse_samples.png')
-        # plt.clf()
+        # rmse_tes = np.mean(rmse_test[:])
+        # rmsetest_std = np.std(rmse_test[:])
+        # rmsetes_max = np.amin(rmse_test[:])
 
-        plt.plot(x, rmse_test.flatten(), label='Test')
-        plt.plot(x, rmse_train.flatten(), label='Train')
-        plt.legend(loc='upper right')
+    outres = open(path + '/result.txt', "a+")
+    outres_db = open(path_db + '/result.txt', "a+")
 
-        plt.xlabel('Samples', fontsize=12)
-        plt.ylabel('RMSE', fontsize=12)
-        plt.title('{} ptmcmc rmse'.format(name))
-        plt.savefig(path_db + '/rmse_samples.png')
-        plt.clf()
+    resultingfile = open(path + '/master_result_file.txt', 'a+')
+    resultingfile_db = open(path_db + '/master_result_file.txt', 'a+')
 
-        # plt.plot(x, rmse_test.flatten(), label='Test')
-        # plt.plot(x, rmse_train.flatten(), label='Train')
-        # plt.legend(loc='upper right')
-        #
-        # plt.xlabel('Samples', fontsize=12)
-        # plt.ylabel('RMSE', fontsize=12)
-        #
-        # plt.savefig(path + '/rmse_samples.png')
-        # plt.clf()
-        fx_test_all = fx_test_all * (dataset.max - dataset.min) + dataset.min
-        fx_low = np.percentile(fx_test_all,5,axis=0)
-        fx_high = np.percentile(fx_test_all,95,axis=0)
-        print(np.shape(fx_high))
-        x = np.linspace(1, testdata.shape[0], num=testdata.shape[0])
-        if output != 1:
-            for i in [0, 1, 4]:
+    xv = name
 
-                plt.plot(x, fx_test[:, i], label='Prediction')
-                plt.plot(x, y_test[:, i], label='Actual')
-                plt.plot(x, fx_low[:, i], label='Uncertainty',color='blue', linestyle='--',alpha=0.25)
-                plt.plot(x, fx_high[:, i],color='blue',linestyle='--',alpha=0.25)
-                plt.fill_between(x, fx_low[:, i], fx_high[:, i], facecolor='grey', alpha=0.2)
-                plt.legend(loc='upper right')
-                plt.xlabel('Time (days)')
-                plt.ylabel('Closing Price (AUD)')
-                #plt.title('{} ptmcmc five_steps_ahead_{}'.format(name, i + 1))
-                plt.savefig(path_db + '/pred_test_{}.png'.format(i + 1))
-                plt.clf()
-        else:
-            plt.plot(x, fx_test, label='Prediction')
-            plt.plot(x, y_test, label='Actual')
+    allres = np.asarray(
+        [NumSample, maxtemp, swap_interval, langevin_prob, learn_rate, swap_perc, accept_per, timetotal] + final_metrics)
+
+    np.savetxt(outres_db, allres, fmt='%1.4f', newline=' ')
+    np.savetxt(resultingfile_db, allres, fmt='%1.4f', newline=' ')
+    np.savetxt(resultingfile_db, [xv], fmt="%s", newline=' \n')
+
+    np.savetxt(outres, allres, fmt='%1.4f', newline=' ')
+    np.savetxt(resultingfile, allres, fmt='%1.4f', newline=' ')
+    np.savetxt(resultingfile, [xv], fmt="%s", newline=' \n')
+
+    np.savetxt(path_db + '/ptmcmc_pred_test_nor.txt', fx_test, fmt='%1.6f')
+
+    n = len(y_test)
+    indi_mae=sum(np.abs(y_test- fx_test)) / n
+    indi_mape= sum(np.abs((y_test- fx_test) / (y_test + 1e-6))) / n * 100
+    indi_rmse_cal=rmse = np.sqrt(sum(np.square(y_test- fx_test)) / n)
+    np.savetxt(path_db + '/ptmcmc_indi_mae.txt', indi_mae, fmt='%1.6f')
+    np.savetxt(path_db + '/ptmcmc_indi_mape.txt', indi_mape, fmt='%1.6f')
+    np.savetxt(path_db + '/ptmcmc_indi_rmse.txt', indi_rmse_cal, fmt='%1.6f')
+
+
+    fx_test = fx_test * (dataset.max -dataset.min)+ dataset.min
+    y_test = y_test * (dataset.max -dataset.min)+ dataset.min
+    np.savetxt(path_db + '/ptmcmc_test_y.txt', y_test, fmt='%1.6f')
+    np.savetxt(path_db + '/ptmcmc_pred_test.txt', fx_test, fmt='%1.6f')
+
+    x = np.linspace(0, rmse_train.shape[0], num=rmse_train.shape[0])
+
+    # plt.plot(x, rmse_train, '.',   label='Test')
+    # plt.plot(x, rmse_test,  '.', label='Train')
+    # plt.legend(loc='upper right')
+    #
+    # plt.xlabel('Samples', fontsize=12)
+    # plt.ylabel('RMSE', fontsize=12)
+    #
+    # plt.savefig(path+'/rmse_samples.png')
+    # plt.clf()
+
+    plt.plot(x, rmse_test.flatten(), label='Test')
+    plt.plot(x, rmse_train.flatten(), label='Train')
+    plt.legend(loc='upper right')
+
+    plt.xlabel('Samples', fontsize=12)
+    plt.ylabel('RMSE', fontsize=12)
+    plt.title('{} ptmcmc rmse'.format(name))
+    plt.savefig(path_db + '/rmse_samples.png')
+    plt.clf()
+
+    # plt.plot(x, rmse_test.flatten(), label='Test')
+    # plt.plot(x, rmse_train.flatten(), label='Train')
+    # plt.legend(loc='upper right')
+    #
+    # plt.xlabel('Samples', fontsize=12)
+    # plt.ylabel('RMSE', fontsize=12)
+    #
+    # plt.savefig(path + '/rmse_samples.png')
+    # plt.clf()
+    fx_test_all = fx_test_all * (dataset.max - dataset.min) + dataset.min
+    fx_low = np.percentile(fx_test_all,5,axis=0)
+    fx_high = np.percentile(fx_test_all,95,axis=0)
+    print(np.shape(fx_high))
+    x = np.linspace(1, testdata.shape[0], num=testdata.shape[0])
+    if output != 1:
+        for i in [0, 1, 4]:
+
+            plt.plot(x, fx_test[:, i], label='Prediction')
+            plt.plot(x, y_test[:, i], label='Actual')
+            plt.plot(x, fx_low[:, i], label='Uncertainty',color='blue', linestyle='--',alpha=0.25)
+            plt.plot(x, fx_high[:, i],color='blue',linestyle='--',alpha=0.25)
+            plt.fill_between(x, fx_low[:, i], fx_high[:, i], facecolor='grey', alpha=0.2)
             plt.legend(loc='upper right')
-            plt.xlabel('Time (Day)')
-            plt.ylabel('Closing Price (USD)')
-            #plt.title('{} ptmcmc one_step_ahead'.format(name))
-            plt.savefig(path_db + '/pred_test.png')
+            plt.xlabel('Time (days)')
+            plt.ylabel('Closing Price (AUD)')
+            #plt.title('{} ptmcmc five_steps_ahead_{}'.format(name, i + 1))
+            plt.savefig(path_db + '/pred_test_{}.png'.format(i + 1))
             plt.clf()
-
-        likelihood = likelihood_rep[:, 0]  # just plot proposed likelihood
-        likelihood = np.asarray(np.split(likelihood, num_chains))
-
-        # Plots
-        plt.plot(likelihood.T)
-
-        plt.xlabel('Samples', fontsize=12)
-        plt.ylabel(' Log-Likelihood', fontsize=12)
-
-        plt.savefig(path + '/likelihood.pdf')
+    else:
+        plt.plot(x, fx_test, label='Prediction')
+        plt.plot(x, y_test, label='Actual')
+        plt.legend(loc='upper right')
+        plt.xlabel('Time (Day)')
+        plt.ylabel('Closing Price (USD)')
+        #plt.title('{} ptmcmc one_step_ahead'.format(name))
+        plt.savefig(path_db + '/pred_test.png')
         plt.clf()
 
-        plt.plot(likelihood.T)
+    likelihood = likelihood_rep[:, 0]  # just plot proposed likelihood
+    likelihood = np.asarray(np.split(likelihood, num_chains))
 
-        plt.xlabel('Samples', fontsize=12)
-        plt.ylabel(' Log-Likelihood', fontsize=12)
+    # Plots
+    plt.plot(likelihood.T)
 
-        plt.savefig(path_db + '/likelihood.pdf')
-        plt.clf()
+    plt.xlabel('Samples', fontsize=12)
+    plt.ylabel(' Log-Likelihood', fontsize=12)
 
-        plt.plot(accept_vec.T)
-        plt.xlabel('Samples', fontsize=12)
-        plt.ylabel(' Number accepted proposals', fontsize=12)
+    plt.savefig(path + '/likelihood.pdf')
+    plt.clf()
 
-        plt.savefig(path_db + '/accept.png')
+    plt.plot(likelihood.T)
 
-        plt.clf()
+    plt.xlabel('Samples', fontsize=12)
+    plt.ylabel(' Log-Likelihood', fontsize=12)
 
-        # mpl_fig = plt.figure()
-        # ax = mpl_fig.add_subplot(111)
+    plt.savefig(path_db + '/likelihood.pdf')
+    plt.clf()
 
-        # ax.boxplot(pos_w)
+    plt.plot(accept_vec.T)
+    plt.xlabel('Samples', fontsize=12)
+    plt.ylabel(' Number accepted proposals', fontsize=12)
 
-        # ax.set_xlabel('[W1] [B1] [W2] [B2]')
-        # ax.set_ylabel('Posterior')
+    plt.savefig(path_db + '/accept.png')
 
-        # plt.legend(loc='upper right')
+    plt.clf()
 
-        # plt.title("Boxplot of Posterior W (weights and biases)")
-        # plt.savefig(path+'/w_pos.png')
-        # plt.savefig(path+'/w_pos.svg', format='svg', dpi=600)
+    # mpl_fig = plt.figure()
+    # ax = mpl_fig.add_subplot(111)
 
-        # plt.clf()
-        # dir()
-        gc.collect()
-        outres.close()
-        resultingfile.close()
-        resultingfile_db.close()
-        outres_db.close()
+    # ax.boxplot(pos_w)
+
+    # ax.set_xlabel('[W1] [B1] [W2] [B2]')
+    # ax.set_ylabel('Posterior')
+
+    # plt.legend(loc='upper right')
+
+    # plt.title("Boxplot of Posterior W (weights and biases)")
+    # plt.savefig(path+'/w_pos.png')
+    # plt.savefig(path+'/w_pos.svg', format='svg', dpi=600)
+
+    # plt.clf()
+    # dir()
+    gc.collect()
+    outres.close()
+    resultingfile.close()
+    resultingfile_db.close()
+    outres_db.close()
 
 
 if __name__ == "__main__":
