@@ -1,4 +1,10 @@
-""" Feed Forward Network with Parallel Tempering for Multi-Core Systems"""
+""" Feedforward Neural Network with Parallel Tempering MCMC"""
+
+
+#Yixhuan He and Rohitash Chandra, 2020, UNSW
+
+#email: rohitash.chandra@unsw.edu.au
+
 
 from __future__ import print_function, division
 import multiprocessing
@@ -14,6 +20,8 @@ import matplotlib as mpl
 from data import Dataset
 import os.path as osp
 import shutil
+
+import pandas as pd
 
 mpl.use('agg')
 import matplotlib.mlab as mlab
@@ -190,7 +198,7 @@ class ptReplica(multiprocessing.Process):
     def mape(self, pred, actual):
         return 100 * np.abs((pred - actual) / (actual+0.000001)).mean()
 
-    '''def likelihood_func(self, fnn, data, w):
+    '''def likelihood_func(self, fnn, data, w): # multinomial lhood in case of classification problem
         y = data[:, self.topology[0]]
         fx  = fnn.evaluate_proposal(data,w)
         rmse = self.rmse(fx,y)
@@ -214,8 +222,15 @@ class ptReplica(multiprocessing.Process):
         indi_rmse = self.rmse_per_output(fx, y)
         mae = self.mae(fx, y)
         mape = self.mape(fx, y)
-        loss = -0.5 * np.log(2 * math.pi * tau_sq) - 0.5 * np.square(y - fx) / tau_sq
-        return [np.sum(loss) / self.adapttemp, fx, rmse, indi_rmse, mae, mape]
+ 
+
+        n = (y.shape[0] * y.shape[1]) # number of samples x number of outputs (prediction horizon)
+        
+        p1 = - n/2 * np.log(2 * math.pi * tau_sq) 
+        p2 =  (1/2*tau_sq) 
+        
+        log_lhood =  p1 - p2 *  np.sum(np.square(y- fx)) 
+        return [ log_lhood / self.adapttemp, fx, rmse, indi_rmse, mae, mape]
 
     '''def prior_likelihood(self, sigma_squared, nu_1, nu_2, w):
         h = self.topology[1]  # number hidden neurons
@@ -979,8 +994,18 @@ def main():
 
     #testdata = np.asarray(dataset.test)
 
+    
+    raw_data = pd.read_csv('./datasets/raw/MMM.csv')['Close']
+    raw_min = raw_data.min()
+    raw_max = raw_data.max()
+    data = raw_data.apply(lambda x: (x - raw_data.min()) / (raw_data.max() - raw_data.min()))
+ 
+    #print(raw_data)
+    #print(data) 
+ 
 
-    traindata = np.genfromtxt('./datasets/MMM8_train.txt', delimiter = ' ')
+
+    traindata = np.genfromtxt('./datasets/MMM8_train.txt', delimiter = ' ') # scaled between 0,1 for sigmoid fuunction in output layer
     testdata = np.genfromtxt('./datasets/MMM8_test.txt', delimiter = ' ')
 
 
@@ -994,7 +1019,7 @@ def main():
     ip = 5
     output = 5
 
-    NumSample = 10000 #
+    NumSample = 10000 # 100000 is used in the paper but 10000 gives similar results.
 
     topology = [ip, hidden, output]
 
@@ -1003,15 +1028,14 @@ def main():
     y_test = testdata[:, netw[0]: netw[0] + netw[-1]]
     y_train = traindata[:, netw[0]: netw[0] + netw[-1]]
 
-    maxtemp = 5
+    maxtemp = 2 # 5 is used in the paper
     # swap_ratio =  0.04
     swap_ratio = 0.01  #
     num_chains = 10  #
-    swap_interval = int(
-        swap_ratio * NumSample / num_chains)  # int(swap_ratio * (NumSample/num_chains)) #how ofen you swap neighbours. note if swap is more than Num_samples, its off
+    swap_interval = 5 # int(swap_ratio * NumSample / num_chains)  #how ofen you swap neighbours. note if swap is more than Num_samples, its off
     burn_in = 0.5  #
 
-    learn_rate = 0.1  # in case langevin gradients are used. Can select other values, we found small value is ok.
+    learn_rate = 0.5 # 0.1 used in paper  # in case langevin gradients are used. Can select other values, we found small value is ok.
 
     use_langevin_gradients = True  # False leaves it as Random-walk proposals. Note that Langevin gradients will take a bit more time computationally
     if output == 1:
@@ -1091,6 +1115,8 @@ def main():
         # rmsetest_std = np.std(rmse_test[:])
         # rmsetes_max = np.amin(rmse_test[:])
 
+    print( final_metrics, '  final_metrics')
+
     outres = open(path + '/result.txt', "a+")
     outres_db = open(path_db + '/result.txt', "a+")
 
@@ -1121,8 +1147,8 @@ def main():
     np.savetxt(path_db + '/ptmcmc_indi_rmse.txt', indi_rmse_cal, fmt='%1.6f')
 
 
-    fx_test = fx_test * (dataset.max -dataset.min)+ dataset.min
-    y_test = y_test * (dataset.max -dataset.min)+ dataset.min
+    fx_test = fx_test * (raw_max -raw_min)+ raw_min
+    y_test = y_test * (raw_max -raw_min)+ raw_min
     np.savetxt(path_db + '/ptmcmc_test_y.txt', y_test, fmt='%1.6f')
     np.savetxt(path_db + '/ptmcmc_pred_test.txt', fx_test, fmt='%1.6f')
 
@@ -1157,7 +1183,7 @@ def main():
     #
     # plt.savefig(path + '/rmse_samples.png')
     # plt.clf()
-    fx_test_all = fx_test_all * (dataset.max - dataset.min) + dataset.min
+    fx_test_all = fx_test_all * (raw_max - raw_min) + raw_min
     fx_low = np.percentile(fx_test_all,5,axis=0)
     fx_high = np.percentile(fx_test_all,95,axis=0)
     print(np.shape(fx_high))
