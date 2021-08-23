@@ -217,19 +217,21 @@ class ptReplica(multiprocessing.Process):
     def likelihood_func(self, fnn, data, w, tau_sq):
         y = data[:, self.topology[0]: self.topology[0] + self.topology[-1]]
         fx = fnn.evaluate_proposal(data, w)
-        rmse = self.rmse(fx, y)
-        float('-inf') < rmse < float('inf')
+        #rmse = self.rmse(fx, y) 
         indi_rmse = self.rmse_per_output(fx, y)
+        rmse = np.mean(indi_rmse)
+
         mae = self.mae(fx, y)
         mape = self.mape(fx, y)
  
 
         n = (y.shape[0] * y.shape[1]) # number of samples x number of outputs (prediction horizon)
         
-        p1 = - n/2 * np.log(2 * math.pi * tau_sq) 
+        p1 = - (n/2) * np.log(2 * math.pi * tau_sq) 
         p2 =  (1/2*tau_sq) 
         
-        log_lhood =  p1 - p2 *  np.sum(np.square(y- fx)) 
+        log_lhood =  p1 - (p2 *  np.sum(np.square(y- fx)) )
+
         return [ log_lhood / self.adapttemp, fx, rmse, indi_rmse, mae, mape]
 
     '''def prior_likelihood(self, sigma_squared, nu_1, nu_2, w):
