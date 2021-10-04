@@ -293,9 +293,9 @@ class ptReplica(multiprocessing.Process):
         # print(w,self.temperature)
         w_proposal = np.random.randn(w_size)
         # Randomwalk Steps
-        step_w = 0.025 # this is the standard deviation
+        step_w = 0.025 # 0.025 used in paper - this is the standard deviation of the Gausian random-walk proposal distribution for weights and biases
 
-        step_eta = 0.2
+        step_eta = 0.2 # for tau_sq (single value) random walk proposal distribution  that captures the noise in predictions
         # Declare FNN
         fnn = Network(self.topology, self.traindata, self.testdata, learn_rate)
 
@@ -375,13 +375,17 @@ class ptReplica(multiprocessing.Process):
                 wc_delta = (w - w_prop_gd)
                 wp_delta = (w_proposal - w_gd)
 
-                sigma_sq = step_w # * step_w # this is the variance
+                sigma_sq = (step_w * step_w ) #this is the variance (originally this was a bug where  sigma_sq = step_w)
 
                 first = -0.5 * np.sum(wc_delta * wc_delta) / sigma_sq  # this is wc_delta.T  *  wc_delta /sigma_sq
                 second = -0.5 * np.sum(wp_delta * wp_delta) / sigma_sq
 
-                diff_prop = first - second
-                diff_prop = diff_prop / self.adapttemp
+                scaling_factor = 0.25 # this is to ensure that high quality samples are accepted
+
+                diff_prop = first - second 
+                diff_prop = diff_prop * scaling_factor  / self.adapttemp
+
+                diff_prop = diff_prop * scaling_factor  / self.adapttemp
                 langevin_count = langevin_count + 1
             else:
                 diff_prop = 0
@@ -987,7 +991,7 @@ def main():
     # THESE ARE THE HYPERPARAMETERS#
     ###############################
 
-    hidden = 5
+    hidden = 10 # 5 used in paper
     ip = 5
     output = 5
 
@@ -1000,14 +1004,13 @@ def main():
     y_test = testdata[:, netw[0]: netw[0] + netw[-1]]
     y_train = traindata[:, netw[0]: netw[0] + netw[-1]]
 
-    maxtemp = 2 # 5 is used in the paper
-    # swap_ratio =  0.04
-    swap_ratio = 0.01  #
-    num_chains = 10  #
+    maxtemp = 2 #  5 is used in the paper 
+    #swap_ratio = 0.01  #
+    num_chains = 8  # 10 used in paper
     swap_interval = 5 # int(swap_ratio * NumSample / num_chains)  #how ofen you swap neighbours. note if swap is more than Num_samples, its off
     burn_in = 0.5  #
 
-    learn_rate = 0.5 # 0.1 used in paper  # in case langevin gradients are used. Can select other values, we found small value is ok.
+    learn_rate = 0.05 # 0.1 used in paper  # in case langevin gradients are used. Can select other values, we found small value is ok.
 
     use_langevin_gradients = True  # False leaves it as Random-walk proposals. Note that Langevin gradients will take a bit more time computationally
     if output == 1:
@@ -1034,7 +1037,7 @@ def main():
 ##############################################################
     timer = time.time()
 
-    langevin_prob = 0.25
+    langevin_prob = 0.5
 
     pt = ParallelTempering(use_langevin_gradients, learn_rate, traindata, testdata, topology, num_chains, maxtemp,
                             NumSample, swap_interval, langevin_prob, path)
@@ -1063,16 +1066,7 @@ def main():
 
     timetotal = (timer2 - timer) / 60
     print(timetotal, 'min taken')
-
-    # PLOTS
-
-    '''acc_tr = np.mean(acc_train [:])
-    acctr_std = np.std(acc_train[:]) 
-    acctr_max = np.amax(acc_train[:])
-
-    acc_tes = np.mean(acc_test[:])
-    acctest_std = np.std(acc_test[:]) 
-    acctes_max = np.amax(acc_test[:])'''
+ 
 
     final_metrics = []
     for metric in [rmse_train, rmse_test, mae_train, mae_test, mape_train, mape_test]:
