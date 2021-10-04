@@ -293,7 +293,7 @@ class ptReplica(multiprocessing.Process):
         # print(w,self.temperature)
         w_proposal = np.random.randn(w_size)
         # Randomwalk Steps
-        step_w = 0.025
+        step_w = 0.025 # this is the standard deviation
 
         step_eta = 0.2
         # Declare FNN
@@ -375,7 +375,7 @@ class ptReplica(multiprocessing.Process):
                 wc_delta = (w - w_prop_gd)
                 wp_delta = (w_proposal - w_gd)
 
-                sigma_sq = step_w
+                sigma_sq = step_w # * step_w # this is the variance
 
                 first = -0.5 * np.sum(wc_delta * wc_delta) / sigma_sq  # this is wc_delta.T  *  wc_delta /sigma_sq
                 second = -0.5 * np.sum(wp_delta * wp_delta) / sigma_sq
@@ -463,7 +463,7 @@ class ptReplica(multiprocessing.Process):
                 mape_test[i + 1] = mape_test[i]
 
             if i % self.swap_interval == 0 and i != 0:
-                print(i)
+                #print(i)
                 # print('\nTemperature: {} Swapping weights: {}'.format(self.temperature, w[:2]))
                 param = np.concatenate([w, np.asarray([eta]).reshape(1), np.asarray([likelihood * self.temperature]),
                                         np.asarray([self.temperature])])
@@ -733,23 +733,23 @@ class ParallelTempering:
             for index in range(self.num_chains):
                 if not self.chains[index].is_alive():
                     count += 1
-                    print(str(self.chains[index].temperature) + " Dead")
+                    #print(str(self.chains[index].temperature) + " Dead")
                     self.wait_chain[index].set()
             if count == self.num_chains:
                 break
-            print("Waiting")
+            #print("Waiting")
             timeout_count = 0
             for index in range(0, self.num_chains):
-                print("Waiting for chain: {}".format(index + 1))
+                #print("Waiting for chain: {}".format(index + 1))
                 flag = self.wait_chain[index].wait()
                 if flag:
-                    print("Signal from chain: {}".format(index + 1))
+                    #print("Signal from chain: {}".format(index + 1))
                     timeout_count += 1
 
             if timeout_count != self.num_chains:
-                print("Skipping the swap!")
+                #print("Skipping the swap!")
                 continue
-            print("Event occured")
+            #print("Event occured")
             for index in range(0, self.num_chains - 1):
                 param_1, param_2, swapped = self.swap_procedure(self.parameter_queue[index],
                                                                 self.parameter_queue[index + 1])
@@ -1034,7 +1034,7 @@ def main():
 ##############################################################
     timer = time.time()
 
-    langevin_prob = 1 / 10
+    langevin_prob = 0.25
 
     pt = ParallelTempering(use_langevin_gradients, learn_rate, traindata, testdata, topology, num_chains, maxtemp,
                             NumSample, swap_interval, langevin_prob, path)
